@@ -109,7 +109,7 @@ def build_nvidia_model(img_height=160, img_width=320, img_channels=3, dropout=0.
 					 input_shape=(img_shape),
 					 output_shape=(img_shape), name='Normalization'))
 	# Crop image to remove background
-	model.add(Cropping2D(cropping=((50,20),(60,60)),input_shape=img_shape))
+	model.add(Cropping2D(cropping=((50,20),(0,0)),input_shape=img_shape))
 
 	# convolution layers with dropout
 	nb_filters = [24, 36, 48, 64, 64]
