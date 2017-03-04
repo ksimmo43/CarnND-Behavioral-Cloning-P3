@@ -1,147 +1,157 @@
-**Behavioral Cloning** 
-
----
-
-**Behavioral Cloning Project**
+**Advanced Lane Finding Project**
 
 The goals / steps of this project are the following:
-* Use the simulator to collect data of good driving behavior
-* Build, a convolution neural network in Keras that predicts steering angles from images
-* Train and validate the model with a training and validation set
-* Test that the model successfully drives around track one without leaving the road
-* Summarize the results with a written report
 
+* Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
+* Apply a distortion correction to raw images.
+* Use color transforms, gradients, etc., to create a thresholded binary image.
+* Apply a perspective transform to rectify binary image ("birds-eye view").
+* Detect lane pixels and fit to find the lane boundary.
+* Determine the curvature of the lane and vehicle position with respect to center.
+* Warp the detected lane boundaries back onto the original image.
+* Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
 [//]: # (Image References)
 
-[image1]: ./examples/model_arch.png "Nvidia Model"
-[image2]: ./examples/model_summary.png "Model Summary"
-[image3]: ./examples/center_1.jpg "Center Lane Driving Image"
-[image4]: ./examples/left_recovery_1.jpg "Recovery Image"
-[image5]: ./examples/right_recovery_1.jpg "Recovery Image"
-[image6]: ./examples/three_cameras.png "Three Cameral Images"
-[image7]: ./examples/flipped_image.png "Flipped Image"
-[image8]: ./examples/bright_image.png "Artificial Brightness Augmentation"
-[image9]: ./examples/trans_image.png "Image Translation Augmentation"
-[image10]: ./examples/cropped_image.png "Image Cropping"
-[video1]: ./examples/run3.mp4 "Project Solution"
+[image1]: ./output_images/cal_undistorted.png "Undistorted Calibration Image"
+[image2]: ./output_images/undistorted_test.png "Undistorted Test Image"
+[image3]: ./output_images/test5_var_grad_ksize15.jpg "Gradient Thresholding Exploration"
+[image4]: ./output_images/test5_color_thresh.jpg "Color Thresholding Exploration"
+[image5]: ./output_images/combined_thresh_example.png "Combined Threshold Example"
+[image6]: ./output_images/straight_lines2warped.png "Warped Image Example"
+[image7]: ./output_images/initial_search.png "Initial Lane Line Search"
+[image8]: ./output_images/repeat_search.png "Repeat Lane Line Search"
+[image9]: ./output_images/lane_visualization.jpg "Lane Visualization"
+[video1]: ./output_images/test1.mp4 "Video"
 
-## Rubric Points
-###Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I addressed each point in my implementation.  
+## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
+###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
 ---
-###Files Submitted & Code Quality
+###Writeup / README
 
-####1. Submission includes all required files and can be used to run the simulator in autonomous mode
+####1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.
 
-My project includes the following files:
-* model.py containing the script to create and train the model
-* drive.py for driving the car in autonomous mode
-* model.h5 containing a trained convolution neural network 
-* writeup_report.md and writeup_report.pdf summarizing the results
-* visualize_model.py to explore image processing and model 
+You're reading it!
 
-####2. Submission includes functional code
-Using the Udacity provided simulator and my drive.py file, the car can be driven autonomously around the track by executing 
-```sh
-python drive.py model.h5
-```
+###Camera Calibration
 
-####3. Submission code is usable and readable
+####1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
 
-The model.py file was used to build and train the model. It contains everything needed to preprocess data, build the model, train and validate the model, and save the model. Comments are throughout to explain each function or section of code.
+All of my initial pipeline development is located in the IPython notebook in ".code_files/pipeline_development.ipynb" The Camera matrix and distortion coefficients are found in cells 3 and 4 of this notebook. 
 
-###Model Architecture and Training Strategy
+In the 2nd cell, all of the calibration images that were provided are read in, and the corners of the checkerboard are found using the cv2.findChessboardCorners() function. All of these corner points are saved as "Image Points." I generated the "Onject Points," which are the coordinates of the chessboard corners in the world, assuming no distortion or rotation. This means the coordinates are fixed in the (x, y) plane at z=0. The object points are then the same for each images, and are generated using numpy.mgrid() function. 
 
-####1. An appropriate model architecture has been employed
-
-I adapted the model architecture from the End-To-End Learning network used by The Nvidia Coorperation, found here:
-https://arxiv.org/pdf/1604.07316v1.pdf
-
-I decided to use the model because it has proven performance for this type of behavior cloning. The paper does not mention dropout layers or activations, so there were some additions and changes I made to the model architecture to adapt it to work for this specific problem. These will be described in detail later.
-
-I also experiemented with the Inception model from Google, but it was not selected for my final implementation.
-
-####2. Attempts to reduce overfitting in the model
-
-In an attempt to prevent overfitting, dropout layers were added to the model after each convolution and fully connected layer (model.py, Lines 102 and 111). The drouput frequency was tuned to obtain acceptable behavior. 
-
-I also split my data set into seperate training and validation sets to ensure the model was generalizing such that similar performance was seen on both the training and validation sets (model.py, Lines 254, 272-273). The model was then tested using the simulator to make sure it could complete continuous laps of automated driving.
-
-####3. Model parameter tuning
-
-The model used an adam optimizer, so the learning rate was not tuned manually (model.py line 116). I did tune the dropout rate (selected to be 0.4) and also determened the level of data augmentation needed.
-
-####4. Appropriate training data
-
-Training data was captured using the simulator provided by Udacity. Images and steering angles were captured while I manually drove around the track. I chose a combination of center lane driving, and recovery path driving from the edges of the track to train the model.  
-
-For details about how I created the training data, see the next section. 
-
-###Model Architecture and Training Strategy
-
-####1. Solution Design Approach
-
-The overall strategy for deriving a model architecture was to start from a known CNN that can achieve behavioral cloning for autonomous driving, and continue to make changes and additions until solution was derived that could successfully drive the car around the track autonomously.
-
-My first step was to do some research and find out how other people have accomplished similar tasks using Neural Networks. I found several examples, two of which were Inception Model from Google and the Nvidia Model from The Nvidia Cooperation. While I experiemented with both, I chose the Nvidia model due to its simplicity and smaller number of layers and parameters, as compared to the Inception Model.
-
-I made a few additions to the Nvidia model and developed the rest of my pipeline for training the model. Then I captured a small set of training data to see if the model could make predictions and control the vehicle in the Simulator. I could tell that the model was attempting to do what I needed it to, so I continued with developing the model. I captured a lot more data and split the data into training and validation sets. I found that while the mean squared error of both sets was low, the car still had problems in certain turns when running the model in the simulator. 
-
-To imporve this, I take additional data in those turns, and also found a few methods for augmenting the data to artificially increase the dataset and help the model generalize. I also found that cropping the image more than I orginially did, I got improved behavior.
-
-Finally, I arrived at a solution that was able to drive the vehicle autonomously around the track without leaving the road.
-
-####2. Final Model Architecture
-
-The Model is defined in model.py, lines 75-118. It consists of 5 convolution layers with dropout layers included, and then 3 fully connected layers with dropout, and finally a linear layer with 1 output, the steering angle. The original architecture from Nvidia can be seen here:
+These sets of points were then used in the 4th cell of the notebook to find the camera calibration and distortion coefficients. This was done using the cv2.calibrateCamera() function. I then applied the distortion correction to any image I used for further analysis to find lane lines using the cv2.undistort() function. Here is an example of one of the calibration images after distortion correction:
 
 ![alt text][image1]
 
-I added a cropping layer after the initial normalization layer, to remove some of the uneccessary background noise of the image. After some tuning, I decided to remove 50 pixels from the top, 20 pixes from the bottom, and 60 pixels from the sides of the image, resulting in a 90x200 image size. This image size is different than what was used in the Nvidia paper, which led to different convolution layer depths, and a larger number of neurons for the fully connected layers. I used Exponential Linear Units for activations after each layer and dropout layers were added
-Here is a summary of the model architecture:
+###Pipeline (single images)
+
+####1. Provide an example of a distortion-corrected image.
+
+After finding the calibration of the camera, distortion correction is as simple as calling the cv2.undistort() function. Here is an example of a distortion corrected test image:
 
 ![alt text][image2]
 
-####3. Creation of the Training Set & Training Process
+####2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-To train the model, I first captured several laps of center lane driving. Here is an example image of center lane driving:
+My final approach was to use a combination of color transforms, and gradients to obtain a binary image result that captured the lane line pixels. In order to reach the conclusion I did, I explored the various techniques seperately.
+
+In the 5th cell of the note book, I explored gradient thresholding. I used the Sobel operator to approximate the gradient in the x and y directions, found the magnitude and direction of the gradient, and applied various thresholds to those calculations to obtain a binary image. I also looked at applying these gradient techniques to different channels of the RGB and HLS color spaces. I also experimented with applying a gaussian blur to the image before finding the gradient, which had little effect on the outcome. I adjusted the gradient kernal size as well. I generated image sets like the following example to study the effectiveness of each approach I took:
 
 ![alt text][image3]
 
-I then recorded driving from the edges of the track back to the center. My hope was that this would help the model learn what to do if it strays from the middle of the track. Here are examples of the start of a recovery run:
+Next, in the 6th cell, I explored color thresholding for lane line identification. I again explored thresholding various color channels of the RGB and HLS color spaces and used different threshold values to optimize the thresholding result. I explored image sets like the following to determine what channels and thresholds were the best for all of the test images:
 
 ![alt text][image4]
+
+Finially, in the 7th cell, I explored different combinations of the gradient and color thresholding techniques. I arrived at the following solution, which I felt produced the best results:
+
+combined_binary[((((R_x == 1) & (R_dir == 1)) & ((B_x == 1) & (B_dir == 1))) | ((S_x == 1) | ((S_mag == 1) & (S_dir == 1)))) | (c_S == 1)] = 1
+
+where R_x and R_dir are the Sobel_x and gradient direction threshold results respectively, for the R channel of the RGB image. This is similarly done for the B channel, producing B_x and B_dir. S_x, S_mag, and S_dir are the Sobel_x, gradient magnitude, magnitude direction results using the S channel of the HLS color space of the image. And finally, c_S is the color threshold of the S channel.
+
+Here is an example of an image with the final combined thresholding approach:
+
 ![alt text][image5]
 
-I also decided to use the left and right camera images that are also captured by the simluator, and apply a small correction to the steering angle for these images. Here are the three camera images for a single point
+####3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
+
+The 8th cell in the notebook is where i developed the perpective transform for all of the images. I did this by taking a test image where the lane lines are known to be straight and parallel. I selected 4 points along the lines which formed my source plane and source points. I then picked 4 points to be destination points, knowing the lines formed by these points should be verticle. Here are the points I chose:
+
+ysize = 720
+point1 = 217,ysize
+point2 = 580,ysize/2+100
+point3 = 705,ysize/2+100
+point4 = 1110,ysize
+
+src = np.float32([[point1],[point2],[point3],[point4]])
+dst = np.float32([[217,ysize],[217,0],[1110,0],[1110,ysize]])
+
+This resulted in the following source and destination points:
+
+| Source        | Destination   | 
+|:-------------:|:-------------:| 
+| 580, 460      | 217, 0        | 
+| 217, 720      | 217, 720      |
+| 1110, 720     | 1110, 720      |
+| 705, 460      | 1110, 0        |
+
+I used these points to generate the transformation matrix using the cv2. getPerspectiveTransform() function. Using this tranformation matrix, I warped the image using cv2.warpPerspective() function. I verified that my perspective transform was working as expected by drawing the `src` and `dst` points back on to the warped image to make sure they followed the lane lines:
 
 ![alt text][image6]
 
-To augment the data sat, I also flipped images and angles thinking that this would provide the same number of left hand and right hand turn examples. For example, here is an image that has then been flipped:
+####4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+
+I use two seperate approaches for identifing lane-line pixels, both of which were descriped in the class material. The first appraoch, which is in the 9th  cell of the notebook, or in the 2nd cell under the intial_lane_line_search() function, is for the first frame of the video, or if no valid lane line was found on the previous image frame. This approach uses a histogram of the bottom half of the warped binary image to find the base of the lane line, and then applys a moving window as it searches up the image to identify the rest of the lane line pixels. Then, a polinomial best fit line is found using the numpy.polyfit() function. Here is an example of this approach:
 
 ![alt text][image7]
 
-After the collection process, I had ~160,000 images and associated steering angles. I still had some difficulties when testing the model in the simulator (which I later found out was partially due to the limited capability of the computer I was using), so I found additional methods for augmenting the dataset. I used methods for adjusting image brightness and translating the images (model.py, Lines 46-57 and 62-72) mentioned by Vivek Yadav in his post: https://chatbotslife.com/using-augmentation-to-mimic-human-driving-496b569760a9#.jfs7vxyyn.
-
-Here are examples of these augmentation techniques:
+Once a fit line is found that accurately represents the lane line, I use the repeat_lane_line_search() function (cell 2) to only search for pixels within a margin from that fit line. Here is that approach:
 
 ![alt text][image8]
+
+####5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+
+The function for calculating the radius of curvature is in the 2nd cell of the notebook called find_curvature(). First, the polinomial fits had to be converted to the world space. Then the equation provided in the course material is used to calculate the curvature a the lowest point in the image (closest to the vehicle).
+
+The function for locating the position of the vehicle is called find_lateral_offset(). I do this by finding the x value of each polinomial fit at the base of the image, and then proceed as follows:
+    #Center of Lane
+    center = np.mean([left_fitx,right_fitx])
+    # Offset in Pixels
+    pixel_offset = img_width/2 - center
+    # Offset in Meters
+    offset = pixel_offset * xm_per_pix
+	
+We assume that the vehicle center is at the center of the image. 
+
+####6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+
+I implemented this step using function visualize_lane() in cell 2 of the notebook. Here is an example
+
 ![alt text][image9]
 
-Then, as part of the model, a layer cropped the image before sending it to the convelution layers. Here is an example of the cropping:
+---
 
-![alt text][image10]
+###Pipeline (video)
 
-Finally randomly shuffled the data set and put 20% of the data into a validation set. 
+####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-I used this training data for training the model. The validation set helped determine if the model was over or under fitting. I ran the model for 5 epochs, which showed the largest reductions in loss and proved to be sufficient for prediction in the simulator in autonomous mode. I used an adam optimizer so that manually training the learning rate wasn't necessary.
+Here's a [link to my video result](./project_video.mp4)
 
+---
 
-###Project Summary
-The project proved very difficult, mainly because of the added time needed to use AWS to train the model, and my computer not being able to smoothly run the simulator and model predictions to autonomously control the vehicle. In the end, this was a very benefitial project, and I am please with my solution. Below is a video of the vehicle being controlled autonomously using my model:
+###Discussion
 
-![alt text][video1]
+####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
+Once I developed the code I needed, created classes and functions from that code and transfered everything I needed to process the video in "the main.ipynb" notebook. I continued to make adjustments to get good performance on the project video. Overall, I think the performance of the lane finding pipeline is farily good. I had problems with finding accurate polinomial fit representations of the white dashed lane line. Even when I identifed all of the lane line pixed, the fit generated would not accuartely represent the true lane line. 
+
+My attempts to apply sanity checks to the lines found proved to cause more problems than improve performance. I ended up not using them, and only filtered the lines from image to image using:
+
+Lane_line = alpha*current_fit + (1-alpha)*previous_fit
+
+The pipeline is likely to fail if the lane line disappears completely or if there are other lines on the road that are close to vertical. TO make the pipeline more robust, I could get the sanity checks working properly to remove erronous detections.
 
 
