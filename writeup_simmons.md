@@ -1,144 +1,107 @@
-**Advanced Lane Finding Project**
+**Vehicle Detection Project**
 
 The goals / steps of this project are the following:
 
-* Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
-* Apply a distortion correction to raw images.
-* Use color transforms, gradients, etc., to create a thresholded binary image.
-* Apply a perspective transform to rectify binary image ("birds-eye view").
-* Detect lane pixels and fit to find the lane boundary.
-* Determine the curvature of the lane and vehicle position with respect to center.
-* Warp the detected lane boundaries back onto the original image.
-* Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
+* Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a classifier Linear SVM classifier
+* Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, to your HOG feature vector. 
+* Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
+* Implement a sliding-window technique and use your trained classifier to search for vehicles in images.
+* Run your pipeline on a video stream (start with the test_video.mp4 and later implement on full project_video.mp4) and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
+* Estimate a bounding box for vehicles detected.
 
 [//]: # (Image References)
+[image1]: ./output_images/car_notcar.png
+[image2]: ./output_images/Hogs.jpg
+[image3]: ./output_images/testboxes.jpg
+[image4]: ./output_images/test_perf2.jpg
 
-[image1]: ./output_images/cal_undistorted.png "Undistorted Calibration Image"
-[image2]: ./output_images/undistorted_test.png "Undistorted Test Image"
-[image3]: ./output_images/test5_var_grad_ksize15.jpg "Gradient Thresholding Exploration"
-[image4]: ./output_images/test5_color_thresh.jpg "Color Thresholding Exploration"
-[image5]: ./output_images/combined_thresh_example.png "Combined Threshold Example"
-[image6]: ./output_images/straight_lines2warped.png "Warped Image Example"
-[image7]: ./output_images/initial_search.png "Initial Lane Line Search"
-[image8]: ./output_images/repeat_search.png "Repeat Lane Line Search"
-[image9]: ./output_images/lane_visualization.jpg "Lane Visualization"
-[video1]: ./output_images/test1.mp4 "Video"
+[video1]: ./project_video_detections.mp4
+[video2]: ./project_video_test.mp4
 
-## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
+## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 ###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
 ---
 ###Writeup / README
 
-####1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.
+####1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
 
 You're reading it!
 
-###Camera Calibration
+###Histogram of Oriented Gradients (HOG)
 
-####1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
+####1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
-All of my initial pipeline development is located in the IPython notebook in ".code_files/pipeline_development.ipynb" The Camera matrix and distortion coefficients are found in cells 3 and 4 of this notebook. 
+The code for this step is contained in the 4th cell of the "pipeline_developement.ipynb"
 
-In the 2nd cell, all of the calibration images that were provided are read in, and the corners of the checkerboard are found using the cv2.findChessboardCorners() function. All of these corner points are saved as "Image Points." I generated the "Onject Points," which are the coordinates of the chessboard corners in the world, assuming no distortion or rotation. This means the coordinates are fixed in the (x, y) plane at z=0. The object points are then the same for each images, and are generated using numpy.mgrid() function. 
-
-These sets of points were then used in the 4th cell of the notebook to find the camera calibration and distortion coefficients. This was done using the cv2.calibrateCamera() function. I then applied the distortion correction to any image I used for further analysis to find lane lines using the cv2.undistort() function. Here is an example of one of the calibration images after distortion correction:
+I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 
 ![alt text][image1]
 
-###Pipeline (single images)
-
-####1. Provide an example of a distortion-corrected image.
-
-After finding the calibration of the camera, distortion correction is as simple as calling the cv2.undistort() function. Here is an example of a distortion corrected test image:
+Here is an example using the first channel of the `YCrCb` color space and HOG parameters of `orientations=15`, `pixels_per_cell=(8, 8)` and `cells_per_block=(1, 1)`:
 
 ![alt text][image2]
 
-####2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
+####2. Explain how you settled on your final choice of HOG parameters.
 
-My final approach was to use a combination of color transforms, and gradients to obtain a binary image result that captured the lane line pixels. In order to reach the conclusion I did, I explored the various techniques seperately.
+I tried various combinations of parameters for Hog, spatial, and color histogram feature extraction, a total of 90 combinations. I extracted features from all of the training examples for each combination, and trained a linear SVC using sklearn.svm.LinearSVC(). I then tested the accuaracy of each combination on 20% of the training images that I kept for validation. With an accuracy of 0.9941, the best performance was achieved by the following combination of parameters:
+color_space = 'YCrCb' # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
+orient = 15  # HOG orientations
+pix_per_cell = 8 # HOG pixels per cell
+cell_per_block = 1 # HOG cells per block
+hog_channel = 'ALL' # Can be 0, 1, 2, or "ALL"
+spatial_size = (16, 16) # Spatial binning dimensions
+hist_bins = 64    # Number of histogram bins
+spatial_feat = True # Spatial features on or off
+hist_feat = True # Histogram features on or off
+hog_feat = True # HOG features on or off
 
-In the 5th cell of the note book, I explored gradient thresholding. I used the Sobel operator to approximate the gradient in the x and y directions, found the magnitude and direction of the gradient, and applied various thresholds to those calculations to obtain a binary image. I also looked at applying these gradient techniques to different channels of the RGB and HLS color spaces. I also experimented with applying a gaussian blur to the image before finding the gradient, which had little effect on the outcome. I adjusted the gradient kernal size as well. I generated image sets like the following example to study the effectiveness of each approach I took:
+This set of parameters led to a feature vector length of 3840
+
+####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
+
+I trained a linear SVM using sklearn.svm.LinearSVC() and the parameters found producing the best performance. This was done in the 4th cell of the "pipeline_developement.ipynb". After seperating the training data into a training and validation set, and shuffleing the data, LinearSVC.fit() was used to train the classifier.
+
+###Sliding Window Search
+
+####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
+
+In the 5th cell of the same notebook, I experimented with using different window scales to search the image. I used various sizes, and searched different areas of the image based on the size of the window I was using. All of the windows started searching from pixel 400, slightly below the center of the image. The smaller windows only searched the area closer to the center of the image (farther away from the vehicle), and larger windows searched farther down the image, where vehicles would appear larger in the image.
+
+Because I used a fairly aggresive thresholding technique, I chose to overlap the windows in both the x and y directions by 75%, except for the smallest window size of (32x32) which was overlapped by only 50%. I also used a variety of window sizes that overlapped each other as well. This was to hopefully get multiple detections around each vehicle. Here are the parameters I used for producing the windows for searching, and an image depicting these windows on a test image:
+window_sizes = [32,64,128,192,256]
+y_stops = [496,528,592,640,656]
+xy_overlaps = [.5,.75,.75,.75,.75]
 
 ![alt text][image3]
 
-Next, in the 6th cell, I explored color thresholding for lane line identification. I again explored thresholding various color channels of the RGB and HLS color spaces and used different threshold values to optimize the thresholding result. I explored image sets like the following to determine what channels and thresholds were the best for all of the test images:
+This led to a large number of windows, and a long run time for my pipeline, but very good performance.
 
+####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
+
+Here is an example test image with positive detections drawn, a heatmap and thresholded heatmap of those detections, and a final image with vehicle bounding boxes drawn.
+ 
 ![alt text][image4]
 
-Finially, in the 7th cell, I explored different combinations of the gradient and color thresholding techniques. I arrived at the following solution, which I felt produced the best results:
-
-combined_binary[((((R_x == 1) & (R_dir == 1)) & ((B_x == 1) & (B_dir == 1))) | ((S_x == 1) | ((S_mag == 1) & (S_dir == 1)))) | (c_S == 1)] = 1
-
-where R_x and R_dir are the Sobel_x and gradient direction threshold results respectively, for the R channel of the RGB image. This is similarly done for the B channel, producing B_x and B_dir. S_x, S_mag, and S_dir are the Sobel_x, gradient magnitude, magnitude direction results using the S channel of the HLS color space of the image. And finally, c_S is the color threshold of the S channel.
-
-Here is an example of an image with the final combined thresholding approach:
-
-![alt text][image5]
-
-####3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
-
-The 8th cell in the notebook is where i developed the perpective transform for all of the images. I did this by taking a test image where the lane lines are known to be straight and parallel. I selected 4 points along the lines which formed my source plane and source points. I then picked 4 points to be destination points, knowing the lines formed by these points should be verticle. Here are the points I chose:
-
-ysize = 720
-point1 = 217,ysize
-point2 = 580,ysize/2+100
-point3 = 705,ysize/2+100
-point4 = 1110,ysize
-
-src = np.float32([[point1],[point2],[point3],[point4]])
-dst = np.float32([[217,ysize],[217,0],[1110,0],[1110,ysize]])
-
-This resulted in the following source and destination points:
-
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 580, 460      | 217, 0        | 
-| 217, 720      | 217, 720      |
-| 1110, 720     | 1110, 720      |
-| 705, 460      | 1110, 0        |
-
-I used these points to generate the transformation matrix using the cv2. getPerspectiveTransform() function. Using this tranformation matrix, I warped the image using cv2.warpPerspective() function. I verified that my perspective transform was working as expected by drawing the `src` and `dst` points back on to the warped image to make sure they followed the lane lines:
-
-![alt text][image6]
-
-####4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
-
-I use two seperate approaches for identifing lane-line pixels, both of which were descriped in the class material. The first appraoch, which is in the 9th  cell of the notebook, or in the 2nd cell under the intial_lane_line_search() function, is for the first frame of the video, or if no valid lane line was found on the previous image frame. This approach uses a histogram of the bottom half of the warped binary image to find the base of the lane line, and then applys a moving window as it searches up the image to identify the rest of the lane line pixels. Then, a polinomial best fit line is found using the numpy.polyfit() function. Here is an example of this approach:
-
-![alt text][image7]
-
-Once a fit line is found that accurately represents the lane line, I use the repeat_lane_line_search() function (cell 2) to only search for pixels within a margin from that fit line. Here is that approach:
-
-![alt text][image8]
-
-####5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
-
-The function for calculating the radius of curvature is in the 2nd cell of the notebook called find_curvature(). First, the polinomial fits had to be converted to the world space. Then the equation provided in the course material is used to calculate the curvature a the lowest point in the image (closest to the vehicle).
-
-The function for locating the position of the vehicle is called find_lateral_offset(). I do this by finding the x value of each polinomial fit at the base of the image, and then proceed as follows:
-    #Center of Lane
-    center = np.mean([left_fitx,right_fitx])
-    # Offset in Pixels
-    pixel_offset = img_width/2 - center
-    # Offset in Meters
-    offset = pixel_offset * xm_per_pix
-	
-We assume that the vehicle center is at the center of the image. 
-
-####6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
-
-I implemented this step using function visualize_lane() in cell 2 of the notebook. Here is an example
-
-![alt text][image9]
-
+I optimized the performance of my classifier by further adjusting the search window parameters, and the thresholding values used to remove false detections, in order to achieve acceptable perfromance on all of the test images.
 ---
 
-###Pipeline (video)
+### Video Implementation
 
-####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./project_video_detections.mp4)
+
+
+####2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
+
+In the second cell of the "main.ipynb" there is a function called "process_images" which is my main pipeline for analyzing video images. Within this pipeline, I have multiple layers of filtering. First I take the current image detections, create a heatmap based on those detections, and then apply a threshold to that heatmap, in order to filter out single false positive detections. scipy.ndimage.measurements.label() is then used to group the thresholded detections into seperate "vehicles", and then bounding boxes are fit to these labeled pixels. These single frame vehicle bounding boxes are then saved, in order to be used on the next frame of the video in the following manner.
+
+Using the vehicle bounding boxes from the past 5 video frames, a heatmap is generated. This heatmap is then added to the heatmap generated from the current frame detection windows. A threshold is then applied to this combined heatmap, based on the number of frames used. This ensures that a detection in that area of the image must be found in successive video frames before it will be counted as a valid vehicle detection, and be tracked. 
+
+An example video I used to assess the performance of my filter techniques can be seen here: This video shows the individual frame detections, the combined heatmap, the thresholded heatmap, and finally the vehicle bounding boxes plotted back onto the original image.
+
+Here's a [link to video](./project_video_test.mp4)
 
 ---
 
@@ -146,12 +109,11 @@ Here's a [link to my video result](./project_video.mp4)
 
 ####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Once I developed the code I needed, created classes and functions from that code and transfered everything I needed to process the video in "the main.ipynb" notebook. I continued to make adjustments to get good performance on the project video. Overall, I think the performance of the lane finding pipeline is farily good. I had problems with finding accurate polinomial fit representations of the white dashed lane line. Even when I identifed all of the lane line pixed, the fit generated would not accuartely represent the true lane line. 
+One problem I faced with my implentation was with computational time. Because I chose to search a variety in sizes of windows with large overlaps, I had to extract large numbers of hog features for each image. This proved to be very time consuming. I attempted to implement the hog sub-sampling method described in the class material, however I ran into problems with the feature length being incorrect. This is one improvment I would need to make in order to take my pipeline further. 
 
-My attempts to apply sanity checks to the lines found proved to cause more problems than improve performance. I ended up not using them, and only filtered the lines from image to image using:
+While I was able to successfully filter out false positive detections, I did have problems with the robustness of the true vehicle detections, and specifically the size of the bounding box. The boxes frequently jumped in size from frame to frame and also would sometimes split into 2 bounding boxes. This is one area of improvement I would like to make in the future. 
 
-Lane_line = alpha*current_fit + (1-alpha)*previous_fit
+The pipeline is likely to fail under low light or with cars that are a similar color to the background. Also, because of my filtering, if the relative velocity between the host and target vehicles is large, its possible a confirmed detection will not occur. 
 
-The pipeline is likely to fail if the lane line disappears completely or if there are other lines on the road that are close to vertical. TO make the pipeline more robust, I could get the sanity checks working properly to remove erronous detections.
-
+In order to make the pipeline more robust, continued tuning of the filtering techniques and the search windows used could be done. 
 
