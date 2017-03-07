@@ -116,4 +116,3 @@ While I was able to successfully filter out false positive detections, I did hav
 The pipeline is likely to fail under low light or with cars that are a similar color to the background. Also, because of my filtering, if the relative velocity between the host and target vehicles is large, its possible a confirmed detection will not occur. 
 
 In order to make the pipeline more robust, continued tuning of the filtering techniques and the search windows used could be done. 
-
