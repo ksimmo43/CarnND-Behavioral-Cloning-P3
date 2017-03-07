@@ -101,7 +101,7 @@ Using the vehicle bounding boxes from the past 5 video frames, a heatmap is gene
 
 An example video I used to assess the performance of my filter techniques can be seen here: This video shows the individual frame detections, the combined heatmap, the thresholded heatmap, and finally the vehicle bounding boxes plotted back onto the original image.
 
-Here's a [link to video](./project_video_test.mp4)
+Here's a [link to the video](./project_video_test.mp4)
 
 ---
 
