@@ -11,7 +11,7 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 [image1]: ./output_images/car_notcar.jpg
-[image2]: ./output_images/Hogs.jpg
+[image2]: ./output_images/hogs.jpg
 [image3]: ./output_images/testboxes.jpg
 [image4]: ./output_images/test_perf2.jpg
 
@@ -84,6 +84,7 @@ Here is an example test image with positive detections drawn, a heatmap and thre
 ![alt text][image4]
 
 I optimized the performance of my classifier by further adjusting the search window parameters, and the thresholding values used to remove false detections, in order to achieve acceptable perfromance on all of the test images.
+
 ---
 
 ### Video Implementation
